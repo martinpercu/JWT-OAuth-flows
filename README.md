@@ -163,3 +163,198 @@ export const verifyToken = (token) => {
 - If we trust the Client the user credentials ==> Resourse Owner Password Flow
 - If the Client is a Native/Mobile/SPA App ==> Authentication Code Flow with PKCE
 - If the Client is a Native/Mobile/SPA App ==> 2nd option Implicit Flow with Form Post (only works with Open Id Connect OIDC) ==> 3rd option Hibrid Flow ==> the last option is Implicit Flow (the secure implementation is not trivial)
+
+
+
+## 04-authorization-code-flow
+## Spotify Auth Flow
+- In Spotify developers Create an "App". In .env use the ==>
+```
+SPOTIFY_CLIENT_ID=8a50f8bdbd2c4afe9947d236b6632801
+SPOTIFY_CLIENT_SECRET=#####################
+REDIRECT_URI=http://127.0.0.1:3002/api/callback
+```
+- This is a Next.Js app with a backend. Important as this is a SPA with Backend ==> We can user the Authorization Code Flow.
+- The pages/index.js is just a button to /api/login 
+- the pages/api/login.js is code in the serve side. We ask in this example 3 scopes ==>
+```
+const scopes = [
+    "user-read-private",
+    "user-read-email",
+    "playlist-read-private",
+  ];
+```
+- The query is a combination of differents parameters que Authorization server needs.
+```
+  const query = querystring.stringify({
+    response_type: "code",
+    client_id: process.env.SPOTIFY_CLIENT_ID,
+    scope: scopes.join(" "),
+    redirect_uri: process.env.REDIRECT_URI,
+  });
+```
+- With this the user is doing the "Authorization Grant". Now the Authorization Code is going to the /callback
+- In the pages/api/callback.js a fetch to SPOTIFY_TOKEN_URL. Something like this ==>
+```
+const response = await fetch(SPOTIFY_TOKEN_URL, options);
+```
+- The option is the very important. Also the body. Here we will exchange a code for a token ==>
+```
+const clientAuth = encode(`${process.env.SPOTIFY_CLIENT_ID}:${process.env.SPOTIFY_CLIENT_SECRET}`)
+const options = {
+  method: "POST",
+  headers: {
+    "Content-Type": "application/x-www-form-urlencoded",
+    Authorization: `Basic ${clientAuth}`,
+  },
+  body: querystring.stringify({
+    code: req.query.code,
+    redirect_uri: process.env.REDIRECT_URI,
+    grant_type: "authorization_code",
+  })
+};
+```
+- With this now should redirect to home BUT still we don't see the date of user. The Authorization server just send the Access Token but we need to send the request with the token to the Resourse Server (Spotify) to get the user data.
+- In callback.js with the {data} we will set a cookie==> (important for security HttpOnly to be use only in the backend)
+```
+res.setHeader("Set-Cookie", `access_token=${data.access_token}; Path=/; HttpOnly`);
+```
+- In home to use the cookie ==>
+```
+const SPOTIFY_ME_ENDPOINT = "https://api.spotify.com/v1/me"; // api with user data
+const SPOTIFY_PLAYLISTS_ENDPOINT = (userId) =>
+  userId ? `https://api.spotify.com/v1/users/${userId}/playlists` : null;
+
+export async function getServerSideProps({ req }) {
+  const data = cookie.parse(req.headers.cookie || "");
+  return { props: { accessToken: data?.access_token } };
+}
+
+export default function Home({ accessToken }) {
+  const { response: userProfile } = useFetch(SPOTIFY_ME_ENDPOINT, accessToken);
+
+  const playlistUrl = SPOTIFY_PLAYLISTS_ENDPOINT(userProfile?.id);
+  const { response: userPlaylists } = useFetch(playlistUrl, accessToken);
+
+  return (
+    <MainContainer>
+      <Card userPlaylists={userPlaylists} userProfile={userProfile} />
+    </MainContainer>
+  );
+}
+```
+- Home() ==> - 1st Fetch to spotify to the userProfile ===>  
+- Home() ==> - 2nd with userProfile.id to get the playlistUrl ===>
+- Home() ==> - 3rd with playlistUrl Fetch to get the userPlayList ===>
+- Home() ==> - 4th to Card with userPlaylists + userProfile
+
+
+
+## 05-authorization-code-flow-with-pkce
+## X (ex Twitter) Auth Flow
+- In https://developer.x.com create an APP (if needed create a dev account)
+- In APP setting go to ==> User authentication settings and SET UP.
+- In Set UP ==> "App permissions" ==> READ
+- In Set UP ==> "Type of App" ==> Native App
+- In Set UP ==> "App info" Native App
+- In Set UP ==> "App info" Callback ==> "localhost:3003/api/callback"
+- In Set UP ==> "App info" Website URL ==> "any real website" (Dont care)
+- Save it. Then will show 2 id ==> "Client ID" and "Client Secret". Copy then and keep it .env
+- In pages/api/login.js ==>
+```
+const TWITTER_AUTH_URL = "https://twitter.com/i/oauth2/authorize";
+```
+- In the function handler set the "scope" and VERY IMPORTANT the "state" is a unique state we keep during the session. (import the randomString to generate the state).
+- Also we need for the PKCE the codeVerifier and de codeChallenge (generateCodeChallenge is a typical hashing function, imported from utils)
+```
+const scopes = ["users.read", "tweet.read"];
+const state = randomString.generate(16);
+
+const codeVerifier = randomString.generate(128);
+const codeChallenge = generateCodeChallenge(codeVerifier)
+```
+- In the query we add the scope, the state, the code_challenge and code_challenge_method 
+```
+const query = querystring.stringify({
+    response_type: "code",
+    client_id: CLIENT_ID,
+    scope: scopes.join(" "),
+    redirect_uri: REDIRECT_URI,
+    state,
+    code_challenge: codeChallenge,
+    code_challenge_method: "S256"
+  });
+```
+- VERY IMPORTANT!! Add the cookies to compare after!!!
+```
+res.setHeader("Set-Cookie", [
+  `state=${state}; Path=/; HttpOnly`,
+  `verifier=${codeVerifier}; Path=/; HttpOnly`
+]);
+```
+- Now pages/api/callback.js 
+- First verify is the state is the same. (Actually if is NOT the same, to throw the error)
+```
+  if (req.query.state !== cookies.state) {
+    res.writeHead(302, { Location: "/#?error=ERROR_STATE_MISMATCH" });
+    res.end();
+  }
+```
+- Now we must make the change with the code received from server to get the token. Now we add the code_verifier (remember in cookie)
+```
+const options = {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/x-www-form-urlencoded",
+    },
+    body: querystring.stringify({
+      code: req.query.code,
+      redirect_uri: REDIRECT_URI,
+      grant_type: "authorization_code",
+      client_id: CLIENT_ID,
+      code_verifier: cookies.verifier,
+    }),
+  };
+```
+- Then the request to Twitter URL asking the token ==> const TWITTER_TOKEN_URL = "https://api.twitter.com/2/oauth2/token"; ===> this will return the token. This tokek we save in a cookie as acces_token. The got to /home
+```
+export default async function handler(req, res) {
+  const cookies = cookie.parse(req.headers.cookie);
+
+  if (req.query.state !== cookies.state) {
+    res.writeHead(302, { Location: "/#?error=ERROR_STATE_MISMATCH" });
+    res.end();
+  }
+
+  const options = {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/x-www-form-urlencoded",
+    },
+    body: querystring.stringify({
+      code: req.query.code,
+      redirect_uri: REDIRECT_URI,
+      grant_type: "authorization_code",
+      client_id: CLIENT_ID,
+      code_verifier: cookies.verifier,
+    }),
+  };
+
+  try {
+    const response = await fetch(TWITTER_TOKEN_URL, options);
+    const data = await response.json();
+
+    res.setHeader(
+      "Set-Cookie",
+      `access_token=${data.access_token}; Path=/; HttpOnly`
+    );
+
+    res.writeHead(302, { Location: "/home" });
+    res.end();
+  } catch (error) {
+    console.error(error);
+  }
+```
+- VERY IMPORTANT. Twitter us CORS so not possible to make request from the client. To avoid this I have and endpoint cors.js. This will receive the url directly (of course I'm sending the access_token). Is like a middleware to "bridge" the Cors policy. and be able to make request from localhost.
+- Now pages/api/home.js I use the cors endpoint to get user info to show in the card.
+
