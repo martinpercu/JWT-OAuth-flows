@@ -1,0 +1,21 @@
+{
+  "name": "platzi-intro-oauth-oidc-dummy",
+  "version": "1.0.0",
+  "main": "index.js",
+  "license": "MIT",
+  "private": true,
+  "workspaces": [
+    "preview-endpoint",
+    "sign-and-verifying",
+    "auth-code-flow",
+    "auth-code-flow-pkce",
+    "implicit-flow",
+    "client-credentials-flow",
+    "resource-owner-password-flow",
+    "authjs-example"
+  ],
+  "dependencies": {
+    "dotenv": "^17.2.1",
+    "jsonwebtoken": "^9.0.2"
+  }
+}
