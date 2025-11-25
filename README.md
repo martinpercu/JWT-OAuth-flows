@@ -1,5 +1,8 @@
 # JWT-OAuth-flows
 
+## A Deep Dive into OAuth 2.0 and OpenID Connect: Understanding Authentication Flows, Practical Use Cases, and Implementing JSON Web Tokens (JWTs)
+
+------------
 
 ## 01-preview-endpoint
 - In folder there are the index.js with 3 endpoints (public, private and token). 
@@ -358,3 +361,112 @@ export default async function handler(req, res) {
 - VERY IMPORTANT. Twitter us CORS so not possible to make request from the client. To avoid this I have and endpoint cors.js. This will receive the url directly (of course I'm sending the access_token). Is like a middleware to "bridge" the Cors policy. and be able to make request from localhost.
 - Now pages/api/home.js I use the cors endpoint to get user info to show in the card.
 
+
+
+## 06-implicit-flow
+## Twitch
+- In https://dev.twitch.tv/console create an APP
+- In Register Your Application ==> "Name" ==> "any name you liki it"
+- In Register Your Application ==> "OAuth Redirect URLs" ==> "localhost:3004/callback"
+- In Register Your Application ==> "Category" ==> "Website integration"
+- In Register Your Application ==> "Client Type" ==> "Confidential"
+- Now from manage copy the Client ID to use in .env
+- In src/App.jsx form here will be done the request. In the MainContainer the button will got to "authUrl"
+- This URL we must to "build" =="const authUrl = useAuthUrl();"
+- The useAuthUrl() is a React hook. This is +or- the same as before (AUTH_URL+CLIENTE_ID+SCOPES etc etc.)
+- IMPORTANT in the state (not safe cookie from server). So we will persist in the sessionStorage. 
+```
+  const state = useSession("state")
+```
+- IMPORTANT ==> The authorization server when receive the request will redirect with the access token in the fragment. So we must take it from there. So as this is a React app we will the the access tomken from the hash fragment. In App.jsx use the utility getHashParams (src/utils/getHashParams.js) ==>
+```
+  const queryAccessToken = getHashParams("access_token");
+```
+- VERY IMPORTANT Avoid attacks Cross-Site Request Forgery. ==>
+```
+  const queryState = getHashParams("state");
+  const sessionState = sessionStorage.getItem("state");
+```
+- Check if they are the same and also we have the queryAccessToken This validation should be done when we have the access token. Is not throw error ==>
+```
+  if (queryState !== sessionState && queryAccessToken) {
+    console.error(new Error("ERROR_STATE_MISMATCH"));
+    cleanUrlHash();
+    return setAccessToken(null);
+  }
+```
+- Then if all OK the access token will be set in the state ==>
+```
+  if (queryAccessToken) {
+    setAccessToken(queryAccessToken);
+    cleanUrlHash();
+  }
+```
+- Now we have what we need to call Twitch endpoints
+```
+  const { response: userProfile } = useFetch(TWITCH_USERS_URL, accessToken);
+  const userChannelsUrl = TWITCH_CHANNELS_URL(userProfile?.data[0].id);
+```
+- Conclusion & Important this flow is not reccomended for SPA. Is important at least delet the hash in the redirect from server. NEVER NEVER keep the access token in localStorage or this kind of implementations.
+
+
+
+
+
+
+
+
+## 07-client-credentials-flow
+## Discord
+- In https://discord.com/developers create an APP
+- GO To tab ==> OAuth2 
+- In General Information of Application ==> "Copy Client ID" ==> "save in .env"
+- In General Information of Application ==> "Copy Client Secret" ==> "save in .env"
+- This is a basic node.js with express server.
+- In the index.js the url will be consumed before and after get token ==> 
+```
+const DISCORD_TOKEN_URL = "https://discord.com/api/oauth2/token";
+const DISCORD_USER_URL = "https://discord.com/api/users/@me";
+const DISCORD_GUILDS_URL = "https://discord.com/api/users/@me/guilds";
+```
+- The Scopes ==>   const scopes = ["identify", "guilds"];
+- In the body the new is just the "client_secret"
+```
+const options = {
+  method: "POST",
+  headers: {
+    "Content-Type": "application/x-www-form-urlencoded",
+  },
+  body: querystring.stringify({
+    grant_type: "client_credentials",
+    client_id: CLIENT_ID,
+    scope: scopes.join(" "),
+    client_secret: CLIENT_SECRET,
+  }),
+};
+```
+- Then with the access token we make the fetch to the userData and guildData.
+- The fetchWithToken() is just a fetch adding headers Authorization Bearer with the accesToken ==>
+```
+export const fetchWithToken = async (url, accessToken) => {
+  try {
+    const response = await fetch(url, {
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+      },
+    });
+    return await response.json();
+  } catch (error) {
+    console.error(error);
+  }
+};
+```
+- Now check the http://localhost:3005 you shoul see the json of Discord user.
+- This is just the basic connesion used machine to machine.
+
+- 
+
+- 
+
+ In General Information of Application ==> "Client Type" ==> "Confidential"
+- Now from manage copy the Client ID to use in .env
