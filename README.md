@@ -1,6 +1,20 @@
 # JWT-OAuth-flows
+--------
 
-## A Deep Dive into OAuth 2.0 and OpenID Connect: Understanding Authentication Flows, Practical Use Cases, and Implementing JSON Web Tokens (JWTs)
+## 🔑 JWT-OAuth-flows: A Deep Dive into Authentication Flows
+
+This repository is a practical, step-by-step guide exploring **OAuth 2.0** and **OpenID Connect** authentication flows, with a focus on implementing **JSON Web Tokens (JWTs)**.
+
+It demonstrates key concepts through various examples:
+
+* **JWT Implementation (01-02):** Covers basic token endpoints, symmetric (`HS256`) and asymmetric (`RS256` using public/private keys) signing and verification.
+* **OAuth 2.0 Flows (03-07):** Provides concrete examples of standard flows using real-world services:
+    * **Authorization Code Flow (04):** Implemented with **Spotify** (SPA with Backend).
+    * **Authorization Code Flow with PKCE (05):** Implemented with **X (ex-Twitter)** (for native/SPA apps, using `code_verifier` and `code_challenge`).
+    * **Implicit Flow (06):** Implemented with **Twitch** (client-side token handling in the URL fragment).
+    * **Client Credentials Flow (07):** Implemented with **Discord** (machine-to-machine authentication).
+
+The repository serves as a learning tool to understand how each flow works and the role of JWTs in securing private resources.
 
 ------------
 
