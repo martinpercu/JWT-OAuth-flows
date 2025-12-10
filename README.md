@@ -1,4 +1,48 @@
 # JWT-OAuth-flows
+
+Comprehensive guide to implementing OAuth 2.0 and OpenID Connect authentication flows with JSON Web Tokens (JWTs). Includes working examples with real-world APIs.
+
+## 🎯 What's Covered
+
+This repository demonstrates:
+- **JWT Implementation**: Symmetric (HS256) and Asymmetric (RS256) signing and verification
+- **OAuth 2.0 Flows**: Authorization Code, PKCE, Implicit, Client Credentials
+- **Real-World Integration**: Working examples with Spotify, X/Twitter, Twitch, and Discord
+- **Security Best Practices**: State validation, PKCE implementation, secure token storage
+
+## 🔐 Implemented Flows
+
+| Flow | Example Service | Use Case |
+|------|----------------|----------|
+| Authorization Code | Spotify | Web apps with backend |
+| Authorization Code + PKCE | X (Twitter) | Native/SPA apps |
+| Implicit Flow | Twitch | Client-side apps (legacy) |
+| Client Credentials | Discord | Machine-to-machine |
+
+## 🛠️ Tech Stack
+- Node.js & Express
+- Next.js (for Spotify/X examples)
+- `jsonwebtoken` library
+- Real OAuth providers (Spotify, X, Twitch, Discord)
+
+## 📚 Quick Start
+Each folder (`01-preview-endpoint`, `02-sign-and-verifying`, etc.) contains:
+- Complete working code
+- `.env` template
+- Step-by-step explanations
+```bash
+cd 04-authorization-code-flow
+npm install
+# Add your credentials to .env
+npm run dev
+```
+
+## 🎓 Learning Path
+1. Start with `01-preview-endpoint` for JWT basics
+2. Progress through `02-sign-and-verifying` for signing methods
+3. Explore OAuth flows (`04-07`) based on your use case
+4. Review decision tree in README to choose the right flow
+
 --------
 
 ## 🔑 JWT-OAuth-flows: A Deep Dive into Authentication Flows
